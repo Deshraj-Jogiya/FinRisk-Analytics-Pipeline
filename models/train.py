@@ -13,11 +13,20 @@ from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, roc_auc_score, confusion_matrix, accuracy_score
 import xgboost as xgb
+import mlflow
+import mlflow.sklearn
+import mlflow.xgboost
 
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app.db")
 MODEL_DIR = os.path.dirname(__file__)
 MODEL_PATH = os.path.join(MODEL_DIR, "risk_model.pkl")
 CHART_PATH = os.path.join(MODEL_DIR, "feature_importance.png")
+
+# Local file-based tracking store (./mlruns) -- no tracking server required.
+# Set MLFLOW_TRACKING_URI before running this script to point at a real
+# server/managed backend instead.
+mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI", f"file:{os.path.join(MODEL_DIR, 'mlruns')}"))
+mlflow.set_experiment("finrisk-credit-approval")
 
 def load_data():
     print("Loading data from database...")
@@ -72,19 +81,28 @@ def train():
     )
     
     # 1. Random Forest Classifier
+    rf_params = {"n_estimators": 100, "random_state": 42, "max_depth": 6}
     rf_pipeline = Pipeline(steps=[
         ('preprocessor', preprocessor),
-        ('classifier', RandomForestClassifier(n_estimators=100, random_state=42, max_depth=6))
+        ('classifier', RandomForestClassifier(**rf_params))
     ])
-    
+
     print("Training Random Forest Classifier...")
-    rf_pipeline.fit(X_train, y_train)
-    rf_preds = rf_pipeline.predict(X_test)
-    rf_probs = rf_pipeline.predict_proba(X_test)[:, 1]
-    
+    with mlflow.start_run(run_name="random_forest"):
+        rf_pipeline.fit(X_train, y_train)
+        rf_preds = rf_pipeline.predict(X_test)
+        rf_probs = rf_pipeline.predict_proba(X_test)[:, 1]
+        rf_accuracy = accuracy_score(y_test, rf_preds)
+        rf_roc_auc = roc_auc_score(y_test, rf_probs)
+
+        mlflow.log_params(rf_params)
+        mlflow.log_metric("accuracy", rf_accuracy)
+        mlflow.log_metric("roc_auc", rf_roc_auc)
+        mlflow.sklearn.log_model(rf_pipeline, name="model")
+
     print("\n--- Random Forest Classifier Evaluation ---")
-    print(f"Accuracy: {accuracy_score(y_test, rf_preds):.4f}")
-    print(f"ROC AUC: {roc_auc_score(y_test, rf_probs):.4f}")
+    print(f"Accuracy: {rf_accuracy:.4f}")
+    print(f"ROC AUC: {rf_roc_auc:.4f}")
     print("\nClassification Report:")
     print(classification_report(y_test, rf_preds))
     
@@ -99,18 +117,31 @@ def train():
     encoded_cat_features = list(cat_encoder.get_feature_names_out(categorical_features))
     feature_names = numeric_features + encoded_cat_features
     
-    xgb_clf = xgb.XGBClassifier(n_estimators=100, max_depth=4, learning_rate=0.1, random_state=42, eval_metric='logloss')
+    xgb_params = {"n_estimators": 100, "max_depth": 4, "learning_rate": 0.1, "random_state": 42, "eval_metric": "logloss"}
+    xgb_clf = xgb.XGBClassifier(**xgb_params)
     print("Training XGBoost Classifier...")
-    xgb_clf.fit(X_train_encoded, y_train)
-    
-    xgb_preds = xgb_clf.predict(X_test_encoded)
-    xgb_probs = xgb_clf.predict_proba(X_test_encoded)[:, 1]
-    
+    with mlflow.start_run(run_name="xgboost"):
+        xgb_clf.fit(X_train_encoded, y_train)
+        xgb_preds = xgb_clf.predict(X_test_encoded)
+        xgb_probs = xgb_clf.predict_proba(X_test_encoded)[:, 1]
+        xgb_accuracy = accuracy_score(y_test, xgb_preds)
+        xgb_roc_auc = roc_auc_score(y_test, xgb_probs)
+
+        mlflow.log_params(xgb_params)
+        mlflow.log_metric("accuracy", xgb_accuracy)
+        mlflow.log_metric("roc_auc", xgb_roc_auc)
+        mlflow.xgboost.log_model(xgb_clf, name="model")
+
     print("\n--- XGBoost Classifier Evaluation ---")
-    print(f"Accuracy: {accuracy_score(y_test, xgb_preds):.4f}")
-    print(f"ROC AUC: {roc_auc_score(y_test, xgb_probs):.4f}")
+    print(f"Accuracy: {xgb_accuracy:.4f}")
+    print(f"ROC AUC: {xgb_roc_auc:.4f}")
     print("\nClassification Report:")
     print(classification_report(y_test, xgb_preds))
+    print(
+        f"\nRandom Forest selected for production (accuracy={rf_accuracy:.4f}, roc_auc={rf_roc_auc:.4f}) "
+        f"vs. XGBoost (accuracy={xgb_accuracy:.4f}, roc_auc={xgb_roc_auc:.4f}) -- both runs logged to MLflow "
+        f"under the 'finrisk-credit-approval' experiment for comparison."
+    )
     
     # Save the pipeline (preprocessing + Random Forest classifier is simpler for serving)
     print(f"Saving Random Forest model pipeline to {MODEL_PATH}...")
