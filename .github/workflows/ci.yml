@@ -21,10 +21,10 @@ jobs:
           python models/train.py
       - name: Verify MLflow actually logged both runs
         run: |
-          test -d models/mlruns
+          test -f models/mlflow.db
           python -c "
           import mlflow
-          mlflow.set_tracking_uri('file:models/mlruns')
+          mlflow.set_tracking_uri('sqlite:///models/mlflow.db')
           exp = mlflow.get_experiment_by_name('finrisk-credit-approval')
           assert exp is not None, 'experiment not created'
           runs = mlflow.search_runs(experiment_ids=[exp.experiment_id])
