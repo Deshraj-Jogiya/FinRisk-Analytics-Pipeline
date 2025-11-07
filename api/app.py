@@ -10,6 +10,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
+from api.graphql_schema import graphql_router  # noqa: E402
+
 # App directories
 API_DIR = os.path.dirname(__file__)
 BASE_DIR = os.path.dirname(API_DIR)
@@ -27,6 +29,7 @@ templates = Jinja2Templates(directory=os.path.join(API_DIR, "templates"))
 # Ensure static directory exists
 os.makedirs(os.path.join(API_DIR, "static"), exist_ok=True)
 app.mount("/static", StaticFiles(directory=os.path.join(API_DIR, "static")), name="static")
+app.include_router(graphql_router, prefix="/graphql")
 
 # Pydantic Model for Prediction Request
 class LoanApplicationRequest(BaseModel):
