@@ -25,12 +25,12 @@ jobs:
           python -c "
           import mlflow
           mlflow.set_tracking_uri('sqlite:///models/mlflow.db')
-          exp = mlflow.get_experiment_by_name('finrisk-credit-approval')
+          exp = mlflow.get_experiment_by_name('finrisk-default-risk')
           assert exp is not None, 'experiment not created'
           runs = mlflow.search_runs(experiment_ids=[exp.experiment_id])
           assert len(runs) == 2, f'expected 2 logged runs, got {len(runs)}'
           assert set(runs[\"tags.mlflow.runName\"]) == {\"random_forest\", \"xgboost\"}
-          print(runs[[\"tags.mlflow.runName\", \"metrics.accuracy\", \"metrics.roc_auc\"]])
+          print(runs[[\"tags.mlflow.runName\", \"metrics.roc_auc\", \"metrics.decline_precision\", \"metrics.decline_recall\"]])
           "
       - name: Boot the real FastAPI app and hit its live REST + GraphQL endpoints
         run: |
@@ -40,5 +40,5 @@ jobs:
           curl --fail http://127.0.0.1:8000/api/kpis
           curl --fail -X POST http://127.0.0.1:8000/graphql -H "Content-Type: application/json" \
             -d '{"query": "{ customers(limit: 2) { customerId firstName } }"}'
-      - name: Run the GraphQL schema unit tests
-        run: python -m pytest tests/test_graphql_schema.py -v
+      - name: Run the tests (GraphQL schema, scoring endpoint and latency)
+        run: python -m pytest tests/ -v

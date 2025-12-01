@@ -1,3 +1,4 @@
+from functools import lru_cache
 # FastAPI Serving & Risk Dashboard Application
 import os
 import sqlite3
@@ -42,8 +43,14 @@ class LoanApplicationRequest(BaseModel):
     loan_purpose: str = Field(..., description="Purpose (e.g. Debt Consolidation, Home Improvement, etc.)")
     interest_rate: float = Field(..., ge=0, description="Interest rate (%)")
     dti_ratio: float = Field(None, description="Optional DTI ratio. If not provided, will be calculated.")
+    prior_delinquencies: int = Field(0, ge=0, description="30+ day late payments on the credit report")
+    credit_utilization: float = Field(0.3, ge=0, le=1, description="Revolving credit utilization (0 - 1)")
 
-# Load model pipeline
+# Applications scored at or above this default probability are declined (same threshold as models/train.py)
+DECLINE_THRESHOLD = 0.80
+
+# Load model pipeline once and keep it in memory; unpickling a 400-tree forest per request would dominate latency
+@lru_cache(maxsize=1)
 def get_model():
     if not os.path.exists(MODEL_PATH):
         raise FileNotFoundError(f"Model file not found at {MODEL_PATH}. Please run training script first.")
@@ -208,6 +215,8 @@ async def predict_risk(request: LoanApplicationRequest):
         'annual_income': request.annual_income,
         'employment_years': request.employment_years,
         'debt_amount': request.debt_amount,
+        'prior_delinquencies': request.prior_delinquencies,
+        'credit_utilization': request.credit_utilization,
         'loan_amount': request.loan_amount,
         'term_months': request.term_months,
         'loan_purpose': request.loan_purpose,
@@ -217,22 +226,20 @@ async def predict_risk(request: LoanApplicationRequest):
     
     # Run prediction pipeline
     try:
-        prob = model.predict_proba(input_data)[0][1] # Probability of Approval (Target=1 is Approved)
-        risk_prob = 1.0 - prob # Risk of Default = 1 - Approval Probability
-        
-        # Determine status classification
-        if risk_prob < 0.28 and dti < 0.45 and request.credit_score >= 580:
-            decision = 'APPROVED'
-        elif risk_prob > 0.60 or dti > 0.55 or request.credit_score < 520:
+        risk_prob = float(model.predict_proba(input_data)[0][1])  # probability of default (target 1 = defaulted)
+
+        # Decline high-risk applications; approve clearly safe ones; send the rest to manual review
+        if risk_prob >= DECLINE_THRESHOLD or dti > 0.55 or request.credit_score < 520:
             decision = 'REJECTED'
+        elif risk_prob < 0.28 and dti < 0.45 and request.credit_score >= 580:
+            decision = 'APPROVED'
         else:
             decision = 'PENDING_REVIEW'
-            
+
         return {
             "success": True,
             "decision": decision,
-            "approval_probability": round(float(prob), 4),
-            "default_risk_probability": round(float(risk_prob), 4),
+            "default_risk_probability": round(risk_prob, 4),
             "calculated_dti": dti
         }
     except Exception as e:
