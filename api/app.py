@@ -92,6 +92,11 @@ async def read_dashboard(request: Request):
         FROM transactions
     """
     tx_kpis = conn.execute(anomaly_query).fetchone()
+
+    # Alerts raised by the fraud rules (etl/fraud_rules.py), which never see the simulator's labels
+    alert_rows = conn.execute("SELECT rule, COUNT(*) AS n FROM fraud_alerts GROUP BY rule").fetchall()
+    alert_counts = {row["rule"]: row["n"] for row in alert_rows}
+    alerted_tx = conn.execute("SELECT COUNT(DISTINCT transaction_id) FROM fraud_alerts").fetchone()[0]
     
     # 2. Recent Applications List
     recent_apps_query = """
@@ -177,6 +182,8 @@ async def read_dashboard(request: Request):
     return templates.TemplateResponse(request, "index.html", {
         "kpis": kpis,
         "tx_kpis": tx_kpis,
+        "alert_counts": alert_counts,
+        "alerted_tx": alerted_tx,
         "recent_apps": recent_apps,
         "recent_anomalies": recent_anomalies,
         "credit_labels": credit_labels,

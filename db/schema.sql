@@ -41,7 +41,18 @@ CREATE TABLE IF NOT EXISTS transactions (
     transaction_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_fraud_flag INTEGER DEFAULT 0 CHECK (is_fraud_flag IN (0, 1)),
     anomaly_score REAL DEFAULT 0,
+    -- Ground truth from the simulator (which fraud pattern was planted); the fraud rules never read it
+    fraud_pattern TEXT,
     FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+);
+
+-- Alerts raised by etl/fraud_rules.py from amount, time, location and customer only
+CREATE TABLE IF NOT EXISTS fraud_alerts (
+    transaction_id INTEGER NOT NULL,
+    rule TEXT NOT NULL,
+    detail TEXT,
+    PRIMARY KEY (transaction_id, rule),
+    FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id)
 );
 
 -- Indices for performance

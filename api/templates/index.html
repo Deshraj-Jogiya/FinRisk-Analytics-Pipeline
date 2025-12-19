@@ -487,11 +487,11 @@
 
             <div class="kpi-card error" id="kpi-anomaly-rate">
                 <div class="kpi-header">
-                    <span class="kpi-title">Fraud anomalies detected</span>
+                    <span class="kpi-title">Fraud rule alerts</span>
                     <span class="kpi-icon">🚨</span>
                 </div>
-                <div class="kpi-value">{{ tx_kpis.fraud_tx }}</div>
-                <div class="kpi-desc">{{ tx_kpis.anomaly_tx }} transactions above anomaly threshold</div>
+                <div class="kpi-value">{{ "{:,}".format(alerted_tx) }}</div>
+                <div class="kpi-desc">velocity {{ alert_counts.get('velocity', 0) }} · amount spike {{ alert_counts.get('amount_spike', 0) }} · foreign {{ alert_counts.get('foreign_location', 0) }}</div>
             </div>
         </div>
 
