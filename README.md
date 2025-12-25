@@ -25,6 +25,8 @@ FastAPI service with REST and GraphQL endpoints behind a Chart.js dashboard.
 - **GraphQL layer:** a Strawberry GraphQL schema serves customer and loan data from the same database as the REST endpoints.
 - **Dashboard:** KPIs and fraud anomalies in Chart.js.
 
+Measured results, each with the question, the test and the decision: [docs/FINDINGS.md](docs/FINDINGS.md).
+
 ## Architecture
 
 ```mermaid
