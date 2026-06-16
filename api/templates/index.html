@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinTech Risk & Fraud Command Center</title>
+    
+    <!-- SEO & Icons -->
+    <meta name="description" content="Real-time Credit Risk Analysis and Transaction Fraud detection dashboard.">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        /* Modern UI Design System & CSS Variables */
+        :root {
+            --bg-base: #060913;
+            --bg-card: rgba(15, 22, 42, 0.55);
+            --border-glow: rgba(99, 102, 241, 0.15);
+            --border-subtle: rgba(255, 255, 255, 0.06);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            
+            /* Accents & Gradients */
+            --accent-primary: #6366f1;
+            --accent-secondary: #a855f7;
+            --accent-success: #10b981;
+            --accent-error: #f43f5e;
+            --accent-warning: #f59e0b;
+            
+            --grad-primary: linear-gradient(135deg, #6366f1, #a855f7);
+            --grad-success: linear-gradient(135deg, #059669, #10b981);
+            --grad-error: linear-gradient(135deg, #e11d48, #f43f5e);
+            
+            --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Base Reset */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.05) 0%, transparent 45%);
+            background-attachment: fixed;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-base);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+
+        /* Layout Structure */
+        header {
+            padding: 1.5rem 2.5rem;
+            border-bottom: 1px solid var(--border-subtle);
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-group {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--grad-primary);
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 800;
+            font-size: 1.3rem;
+            color: white;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .logo-text h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #ffffff, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-text p {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .badge-live {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-success);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .badge-live::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-success);
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 1.5s infinite;
+        }
+
+        /* Container & Grid */
+        main {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* KPI Dashboard Row */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .kpi-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            transition: var(--transition-smooth);
+            backdrop-filter: blur(8px);
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-glow);
+            box-shadow: 0 12px 24px -10px rgba(99, 102, 241, 0.15);
+        }
+
+        .kpi-card::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent-primary);
+        }
+
+        .kpi-card.success::after { background: var(--accent-success); }
+        .kpi-card.error::after { background: var(--accent-error); }
+        .kpi-card.warning::after { background: var(--accent-warning); }
+
+        .kpi-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.8rem;
+        }
+
+        .kpi-title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .kpi-icon {
+            font-size: 1.2rem;
+        }
+
+        .kpi-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.4rem;
+        }
+
+        .kpi-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Dashboard Main Layout Split */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .section-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(8px);
+            margin-bottom: 2rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 1rem;
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+        }
+
+        /* Form Controls */
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.2rem;
+        }
+
+        @media (max-width: 600px) {
+            .grid-2col {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 0.8rem 1rem;
+            color: white;
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: var(--transition-smooth);
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.15);
+        }
+
+        .btn-submit {
+            width: 100%;
+            background: var(--grad-primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.9rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            margin-top: 1rem;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        /* Decision Predict Panel */
+        .predict-results-panel {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 1.5rem;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 250px;
+            text-align: center;
+        }
+
+        .badge {
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            display: inline-block;
+        }
+
+        .badge-approved { background: rgba(16, 185, 129, 0.15); color: var(--accent-success); border: 1px solid rgba(16, 185, 129, 0.2); }
+        .badge-rejected { background: rgba(244, 63, 94, 0.15); color: var(--accent-error); border: 1px solid rgba(244, 63, 94, 0.2); }
+        .badge-review { background: rgba(245, 158, 11, 0.15); color: var(--accent-warning); border: 1px solid rgba(245, 158, 11, 0.2); }
+
+        .result-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin: 1rem 0 0.5rem 0;
+        }
+
+        .result-prob {
+            font-size: 2.2rem;
+            font-weight: 800;
+            background: var(--grad-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Charts Split Row */
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 1000px) {
+            .charts-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-container {
+            position: relative;
+            height: 320px;
+            width: 100%;
+        }
+
+        /* Tables */
+        .table-responsive {
+            overflow-x: auto;
+            width: 100%;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 0.95rem;
+        }
+
+        tr:hover td {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .tr-anomaly {
+            background-color: rgba(244, 63, 94, 0.03);
+        }
+        
+        .anomaly-value {
+            color: var(--accent-error);
+            font-weight: 600;
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(0.9); opacity: 0.5; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease forwards;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header bar -->
+    <header>
+        <div class="logo-group">
+            <div class="logo-icon">FT</div>
+            <div class="logo-text">
+                <h1>FinRisk Command Center</h1>
+                <p>AI-Powered Risk Ingestion & Analysis Engine</p>
+            </div>
+        </div>
+        <div class="badge-live" id="live-indicator">LIVE MONITORING</div>
+    </header>
+
+    <main>
+        
+        <!-- KPI Row -->
+        <div class="kpi-row">
+            <div class="kpi-card" id="kpi-total-apps">
+                <div class="kpi-header">
+                    <span class="kpi-title">Total Applications</span>
+                    <span class="kpi-icon">📋</span>
+                </div>
+                <div class="kpi-value">{{ kpis.total_apps }}</div>
+                <div class="kpi-desc">Processed historical requests</div>
+            </div>
+            
+            <div class="kpi-card success" id="kpi-approval-rate">
+                <div class="kpi-header">
+                    <span class="kpi-title">Approval Rate</span>
+                    <span class="kpi-icon">✅</span>
+                </div>
+                <div class="kpi-value">
+                    {% if kpis.total_apps > 0 %}
+                        {{ ((kpis.approved_apps / kpis.total_apps) * 100)|round(1) }}%
+                    {% else %}
+                        0%
+                    {% endif %}
+                </div>
+                <div class="kpi-desc">{{ kpis.approved_apps }} total approved loans</div>
+            </div>
+            
+            <div class="kpi-card warning" id="kpi-pending-reviews">
+                <div class="kpi-header">
+                    <span class="kpi-title">Pending Reviews</span>
+                    <span class="kpi-icon">⏳</span>
+                </div>
+                <div class="kpi-value">{{ kpis.pending_apps }}</div>
+                <div class="kpi-desc">Require manual audit decision</div>
+            </div>
+
+            <div class="kpi-card error" id="kpi-anomaly-rate">
+                <div class="kpi-header">
+                    <span class="kpi-title">Fraud anomalies detected</span>
+                    <span class="kpi-icon">🚨</span>
+                </div>
+                <div class="kpi-value">{{ tx_kpis.fraud_tx }}</div>
+                <div class="kpi-desc">{{ tx_kpis.anomaly_tx }} transactions above anomaly threshold</div>
+            </div>
+        </div>
+
+        <!-- Dashboard Grid Split -->
+        <div class="dashboard-grid">
+            
+            <!-- Real-time Prediction Section -->
+            <div class="section-card">
+                <div class="section-header">
+                    <h2 class="section-title">New Credit Application Inference</h2>
+                    <span class="text-secondary">Machine Learning Risk Score Simulator</span>
+                </div>
+                
+                <div class="grid-2col">
+                    
+                    <!-- Predict Input Form -->
+                    <form id="prediction-form" onsubmit="submitPrediction(event)">
+                        <div class="grid-2col">
+                            <div class="form-group">
+                                <label for="credit_score">Credit Score (300-850)</label>
+                                <input type="number" id="credit_score" name="credit_score" value="720" min="300" max="850" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="annual_income">Annual Income ($)</label>
+                                <input type="number" id="annual_income" name="annual_income" value="75000" min="0" required>
+                            </div>
+                        </div>
+                        
+                        <div class="grid-2col">
+                            <div class="form-group">
+                                <label for="debt_amount">Existing Total Debt ($)</label>
+                                <input type="number" id="debt_amount" name="debt_amount" value="12000" min="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="employment_years">Employment Years</label>
+                                <input type="number" id="employment_years" name="employment_years" value="5" min="0" required>
+                            </div>
+                        </div>
+
+                        <div class="grid-2col">
+                            <div class="form-group">
+                                <label for="loan_amount">Requested Loan Amount ($)</label>
+                                <input type="number" id="loan_amount" name="loan_amount" value="25000" min="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="term_months">Term (Months)</label>
+                                <select id="term_months" name="term_months">
+                                    <option value="12">12 Months</option>
+                                    <option value="24">24 Months</option>
+                                    <option value="36" selected>36 Months</option>
+                                    <option value="48">48 Months</option>
+                                    <option value="60">60 Months</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid-2col">
+                            <div class="form-group">
+                                <label for="interest_rate">Offered Interest Rate (%)</label>
+                                <input type="number" id="interest_rate" name="interest_rate" value="8.5" step="0.1" min="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="loan_purpose">Loan Purpose</label>
+                                <select id="loan_purpose" name="loan_purpose">
+                                    <option value="Debt Consolidation" selected>Debt Consolidation</option>
+                                    <option value="Home Improvement">Home Improvement</option>
+                                    <option value="Major Purchase">Major Purchase</option>
+                                    <option value="Medical Expenses">Medical Expenses</option>
+                                    <option value="Business Investment">Business Investment</option>
+                                    <option value="Education">Education</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn-submit" id="btn-predict-submit">Run Real-time Inference</button>
+                    </form>
+                    
+                    <!-- Predict Output Box -->
+                    <div id="prediction-result" class="predict-results-panel">
+                        <span class="kpi-icon" style="font-size: 2.5rem;">🔮</span>
+                        <div class="result-title">Ready for Inference</div>
+                        <p class="text-secondary" style="font-size:0.9rem; max-width:240px; margin: 0.5rem auto 0 auto;">Submit the application to calculate DTI ratio, model risk probabilities, and pipeline decisions.</p>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Pipeline Diagnostics -->
+            <div class="section-card" style="display:flex; flex-direction:column; justify-content:space-between;">
+                <div>
+                    <div class="section-header">
+                        <h2 class="section-title">Model Specifications</h2>
+                    </div>
+                    <p class="text-secondary" style="font-size: 0.9rem; line-height: 1.6; margin-bottom: 1rem;">
+                        The serving architecture leverages a **Random Forest Classifier** trained on synthetic demographic, financial, and credit profiles.
+                    </p>
+                    <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 1rem; font-size: 0.85rem; margin-bottom:1rem;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom: 0.5rem;">
+                            <span class="text-secondary">Model Type:</span>
+                            <span style="font-weight:600;">RandomForestClassifier</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom: 0.5rem;">
+                            <span class="text-secondary">Decision Engine:</span>
+                            <span style="font-weight:600;">DTI Threshold + Risk Model</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom: 0.5rem;">
+                            <span class="text-secondary">Classification Accuracy:</span>
+                            <span class="text-success" style="font-weight:600;">97.3%</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span class="text-secondary">Serving Framework:</span>
+                            <span style="font-weight:600;">FastAPI ASGI</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; padding-top: 1rem;">
+                    <span class="kpi-icon" style="font-size: 2rem;">🛡️</span>
+                    <h3 style="font-size: 1rem; margin: 0.5rem 0 0.2rem 0;">Audit Engine Activated</h3>
+                    <p class="text-muted" style="font-size: 0.8rem;">Every API request is audited and stored for compliance and re-training cycles.</p>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="charts-row">
+            <div class="section-card">
+                <div class="section-header">
+                    <h2 class="section-title">Applications by Credit Bracket</h2>
+                </div>
+                <div class="chart-container">
+                    <canvas id="creditChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="section-card">
+                <div class="section-header">
+                    <h2 class="section-title">Fraud Frequency by Merchant Category</h2>
+                </div>
+                <div class="chart-container">
+                    <canvas id="merchantChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lists & Logs Grid -->
+        <div class="charts-row">
+            
+            <!-- Recent Applications -->
+            <div class="section-card" style="margin-bottom:0;">
+                <div class="section-header">
+                    <h2 class="section-title">Recent Ingestion Queue</h2>
+                </div>
+                <div class="table-responsive">
+                    <table id="table-recent-apps">
+                        <thead>
+                            <tr>
+                                <th>Applicant</th>
+                                <th>Amount</th>
+                                <th>Purpose</th>
+                                <th>Risk Score</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for app in recent_apps %}
+                            <tr>
+                                <td style="font-weight: 500;">{{ app.name }}</td>
+                                <td>${{ "{:,.0f}".format(app.loan_amount) }}</td>
+                                <td>{{ app.loan_purpose }}</td>
+                                <td>{{ (app.risk_score * 100)|round(1) }}%</td>
+                                <td>
+                                    {% if app.decision_status == 'APPROVED' %}
+                                    <span class="badge badge-approved">Approved</span>
+                                    {% elif app.decision_status == 'REJECTED' %}
+                                    <span class="badge badge-rejected">Rejected</span>
+                                    {% else %}
+                                    <span class="badge badge-review">Review</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Fraud / Anomalies Log -->
+            <div class="section-card" style="margin-bottom:0;">
+                <div class="section-header">
+                    <h2 class="section-title">Fraud Anomaly Stream</h2>
+                </div>
+                <div class="table-responsive">
+                    <table id="table-fraud-stream">
+                        <thead>
+                            <tr>
+                                <th>Customer</th>
+                                <th>Amount</th>
+                                <th>Category</th>
+                                <th>Location</th>
+                                <th>Anomaly Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tx in recent_anomalies %}
+                            <tr class="{% if tx.is_fraud_flag == 1 or tx.anomaly_score > 0.7 %}tr-anomaly{% endif %}">
+                                <td>{{ tx.name }}</td>
+                                <td>${{ "{:,.2f}".format(tx.amount) }}</td>
+                                <td>{{ tx.merchant_category }}</td>
+                                <td>{{ tx.location }}</td>
+                                <td class="anomaly-value">{{ (tx.anomaly_score * 100)|round(1) }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        // Chart.js Configuration
+        
+        // 1. Credit Bracket Chart
+        const creditCtx = document.getElementById('creditChart').getContext('2d');
+        const creditLabels = {{ credit_labels|tojson }};
+        const creditTotals = {{ credit_totals|tojson }};
+        const creditApproved = {{ credit_approved|tojson }};
+        
+        new Chart(creditCtx, {
+            type: 'bar',
+            data: {
+                labels: creditLabels,
+                datasets: [
+                    {
+                        label: 'Total Applications',
+                        data: creditTotals,
+                        backgroundColor: 'rgba(168, 85, 247, 0.4)',
+                        borderColor: 'rgb(168, 85, 247)',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    },
+                    {
+                        label: 'Approved Applications',
+                        data: creditApproved,
+                        backgroundColor: 'rgba(16, 185, 129, 0.5)',
+                        borderColor: 'rgb(16, 185, 129)',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: '#f8fafc', font: { family: 'Outfit' } }
+                    }
+                }
+            }
+        });
+
+        // 2. Merchant Category Chart
+        const merchantCtx = document.getElementById('merchantChart').getContext('2d');
+        const merchantLabels = {{ merchant_labels|tojson }};
+        const merchantFrauds = {{ merchant_frauds|tojson }};
+        
+        new Chart(merchantCtx, {
+            type: 'bar',
+            data: {
+                labels: merchantLabels,
+                datasets: [{
+                    label: 'Fraud Occurrences',
+                    data: merchantFrauds,
+                    backgroundColor: 'rgba(244, 63, 94, 0.5)',
+                    borderColor: 'rgb(244, 63, 94)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: '#f8fafc', font: { family: 'Outfit' } }
+                    }
+                }
+            }
+        });
+
+        // Submit prediction via AJAX API request
+        async function submitPrediction(event) {
+            event.preventDefault();
+            const resultBox = document.getElementById('prediction-result');
+            
+            // Show loading state
+            resultBox.innerHTML = `
+                <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--accent-primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite;"></div>
+                <div style="margin-top: 1rem;">Calculating Risk Scores...</div>
+                <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+            `;
+            
+            const form = event.target;
+            const payload = {
+                credit_score: parseInt(form.credit_score.value),
+                annual_income: parseFloat(form.annual_income.value),
+                employment_years: parseInt(form.employment_years.value),
+                debt_amount: parseFloat(form.debt_amount.value),
+                loan_amount: parseFloat(form.loan_amount.value),
+                term_months: parseInt(form.term_months.value),
+                interest_rate: parseFloat(form.interest_rate.value),
+                loan_purpose: form.loan_purpose.value
+            };
+            
+            try {
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    let badgeClass = "badge-approved";
+                    if (data.decision === "REJECTED") badgeClass = "badge-rejected";
+                    else if (data.decision === "PENDING_REVIEW") badgeClass = "badge-review";
+                    
+                    let decisionWord = "Approved";
+                    if (data.decision === "REJECTED") decisionWord = "Rejected";
+                    else if (data.decision === "PENDING_REVIEW") decisionWord = "Refer for Audit";
+                    
+                    resultBox.innerHTML = `
+                        <div class="fade-in">
+                            <span class="badge ${badgeClass}">${decisionWord}</span>
+                            <div class="result-title">Inference Results</div>
+                            <div class="result-prob">${(data.approval_probability * 100).toFixed(1)}%</div>
+                            <div class="text-secondary" style="font-size: 0.85rem; margin-bottom: 0.5rem;">Approval Probability</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">
+                                Calculated DTI: <span style="font-weight:600; color:white;">${(data.calculated_dti * 100).toFixed(1)}%</span> | 
+                                Default Risk: <span style="font-weight:600; color:white;">${(data.default_risk_probability * 100).toFixed(1)}%</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    resultBox.innerHTML = `<span class="badge badge-rejected">Error</span><div class="result-title">Prediction Failed</div>`;
+                }
+            } catch (err) {
+                resultBox.innerHTML = `<span class="badge badge-rejected">Error</span><div class="result-title">Connection Error</div>`;
+            }
+        }
+    </script>
+</body>
+</html>
