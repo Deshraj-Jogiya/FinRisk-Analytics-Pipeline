@@ -22,10 +22,12 @@ MODEL_DIR = os.path.dirname(__file__)
 MODEL_PATH = os.path.join(MODEL_DIR, "risk_model.pkl")
 CHART_PATH = os.path.join(MODEL_DIR, "feature_importance.png")
 
-# Local file-based tracking store (./mlruns) -- no tracking server required.
-# Set MLFLOW_TRACKING_URI before running this script to point at a real
-# server/managed backend instead.
-mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI", f"file:{os.path.join(MODEL_DIR, 'mlruns')}"))
+# Local SQLite-backed tracking store (./models/mlflow.db) -- no tracking
+# server required. The plain filesystem store ("file:./mlruns") is in
+# MLflow's maintenance mode as of 2.x/3.x; SQLite is the current
+# recommended local backend. Set MLFLOW_TRACKING_URI before running this
+# script to point at a real server/managed backend instead.
+mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI", f"sqlite:///{os.path.join(MODEL_DIR, 'mlflow.db')}"))
 mlflow.set_experiment("finrisk-credit-approval")
 
 def load_data():
