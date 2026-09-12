@@ -19,6 +19,19 @@ jobs:
         run: |
           python etl/pipeline.py
           python models/train.py
+      - name: Verify MLflow actually logged both runs
+        run: |
+          test -d models/mlruns
+          python -c "
+          import mlflow
+          mlflow.set_tracking_uri('file:models/mlruns')
+          exp = mlflow.get_experiment_by_name('finrisk-credit-approval')
+          assert exp is not None, 'experiment not created'
+          runs = mlflow.search_runs(experiment_ids=[exp.experiment_id])
+          assert len(runs) == 2, f'expected 2 logged runs, got {len(runs)}'
+          assert set(runs[\"tags.mlflow.runName\"]) == {\"random_forest\", \"xgboost\"}
+          print(runs[[\"tags.mlflow.runName\", \"metrics.accuracy\", \"metrics.roc_auc\"]])
+          "
       - name: Boot the real FastAPI app and hit its live endpoints
         run: |
           python -m uvicorn api.app:app --host 127.0.0.1 --port 8000 &
