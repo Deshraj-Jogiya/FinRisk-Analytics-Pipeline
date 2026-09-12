@@ -32,9 +32,13 @@ jobs:
           assert set(runs[\"tags.mlflow.runName\"]) == {\"random_forest\", \"xgboost\"}
           print(runs[[\"tags.mlflow.runName\", \"metrics.accuracy\", \"metrics.roc_auc\"]])
           "
-      - name: Boot the real FastAPI app and hit its live endpoints
+      - name: Boot the real FastAPI app and hit its live REST + GraphQL endpoints
         run: |
           python -m uvicorn api.app:app --host 127.0.0.1 --port 8000 &
           sleep 3
           curl --fail http://127.0.0.1:8000/
           curl --fail http://127.0.0.1:8000/api/kpis
+          curl --fail -X POST http://127.0.0.1:8000/graphql -H "Content-Type: application/json" \
+            -d '{"query": "{ customers(limit: 2) { customerId firstName } }"}'
+      - name: Run the GraphQL schema unit tests
+        run: python -m pytest tests/test_graphql_schema.py -v
