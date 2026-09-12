@@ -56,7 +56,7 @@ def get_db_connection():
 @app.get("/", response_class=HTMLResponse)
 async def read_dashboard(request: Request):
     if not os.path.exists(DB_PATH):
-        return templates.TemplateResponse("error.html", {"request": request, "message": "Database not initialized. Please run ETL pipeline first."})
+        return templates.TemplateResponse(request, "error.html", {"message": "Database not initialized. Please run ETL pipeline first."})
         
     conn = get_db_connection()
     
@@ -164,8 +164,7 @@ async def read_dashboard(request: Request):
     merchant_totals = [row['total'] for row in merchant_data]
     merchant_frauds = [row['fraud_count'] for row in merchant_data]
     
-    return templates.TemplateResponse("index.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "index.html", {
         "kpis": kpis,
         "tx_kpis": tx_kpis,
         "recent_apps": recent_apps,
