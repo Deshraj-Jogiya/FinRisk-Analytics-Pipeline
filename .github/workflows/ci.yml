@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  pipeline-and-api-smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: Run the real ETL + model training pipeline (Random Forest and XGBoost)
+        run: |
+          python etl/pipeline.py
+          python models/train.py
+      - name: Boot the real FastAPI app and hit its live endpoints
+        run: |
+          python -m uvicorn api.app:app --host 127.0.0.1 --port 8000 &
+          sleep 3
+          curl --fail http://127.0.0.1:8000/
+          curl --fail http://127.0.0.1:8000/api/kpis
