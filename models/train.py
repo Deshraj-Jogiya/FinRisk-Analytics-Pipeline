@@ -100,7 +100,9 @@ def train():
         mlflow.log_params(rf_params)
         mlflow.log_metric("accuracy", rf_accuracy)
         mlflow.log_metric("roc_auc", rf_roc_auc)
-        mlflow.sklearn.log_model(rf_pipeline, name="model")
+        # MLflow now saves scikit-learn models with skops, which refuses to load any type not explicitly trusted. The only one this
+        # pipeline needs is the node storage of the trees in the Random Forest we just trained ourselves.
+        mlflow.sklearn.log_model(rf_pipeline, name="model", skops_trusted_types=["sklearn.tree._tree.Tree"])
 
     print("\n--- Random Forest Classifier Evaluation ---")
     print(f"Accuracy: {rf_accuracy:.4f}")
