@@ -11,6 +11,9 @@ SCHEMA_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "db", "sc
 
 def initialize_database():
     print(f"Initializing database at {DB_PATH}...")
+    # The mock data is regenerated in full on every run, so start from an empty database
+    if os.path.exists(DB_PATH):
+        os.remove(DB_PATH)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
@@ -37,14 +40,14 @@ def generate_mock_data():
     locations = ["New York, NY", "Los Angeles, CA", "Chicago, IL", "Houston, TX", "Phoenix, AZ", "Philadelphia, PA"]
     purposes = ["Debt Consolidation", "Home Improvement", "Major Purchase", "Medical Expenses", "Business Investment", "Education"]
     
-    num_customers = 200
+    num_customers = 12500
     customers = []
     
     # 1. Generate Customers
     for i in range(num_customers):
         fn = random.choice(first_names)
         ln = random.choice(last_names)
-        email = f"{fn.lower()}.{ln.lower()}{random.randint(10, 999)}@fintechmail.local"
+        email = f"{fn.lower()}.{ln.lower()}{i + 1}@fintechmail.local"  # the index keeps every address unique
         
         # Credit score: center around 680 with some poor and some exceptional
         credit_score = int(np.clip(np.random.normal(675, 80), 300, 850))
@@ -59,27 +62,35 @@ def generate_mock_data():
         # Debt amount
         debt_amount = round(float(np.random.uniform(0.05, 0.4) * annual_income * (random.random() > 0.1)), 2)
         
-        customers.append((fn, ln, email, credit_score, annual_income, employment_years, debt_amount))
+        # Credit-bureau history: lower scores go with more late payments and higher revolving utilization
+        prior_delinquencies = int(np.random.poisson(np.exp(1.2 - (credit_score - 600) / 90.0)))
+        credit_utilization = round(float(np.clip(np.random.beta(2, 5) + (700 - credit_score) / 600.0
+                                                 + np.random.normal(0, 0.1), 0.0, 1.0)), 4)
+
+        customers.append((fn, ln, email, credit_score, annual_income, employment_years, debt_amount,
+                          prior_delinquencies, credit_utilization))
         
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
     cursor.executemany("""
-        INSERT INTO customers (first_name, last_name, email, credit_score, annual_income, employment_years, debt_amount)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO customers (first_name, last_name, email, credit_score, annual_income, employment_years, debt_amount,
+                               prior_delinquencies, credit_utilization)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, customers)
     conn.commit()
     print(f"Inserted {num_customers} customer records.")
     
     # Retrieve customer details to generate loan apps and transactions
-    cursor.execute("SELECT customer_id, credit_score, annual_income, debt_amount FROM customers")
+    cursor.execute("SELECT customer_id, credit_score, annual_income, debt_amount, employment_years, prior_delinquencies, "
+                   "credit_utilization FROM customers")
     db_customers = cursor.fetchall()
     
     # 2. Generate Loan Applications
     loan_apps = []
     purposes_weights = [0.4, 0.2, 0.15, 0.1, 0.1, 0.05]
     
-    for cid, cs, income, debt in db_customers:
+    for cid, cs, income, debt, emp_years, delinquencies, utilization in db_customers:
         # 85% of customers apply for a loan
         if random.random() > 0.85:
             continue
@@ -118,12 +129,14 @@ def generate_mock_data():
         existing_monthly_debt = (debt * 0.03) # assume 3% of total debt is paid monthly
         dti_ratio = round((existing_monthly_debt + monthly_payment) / monthly_income, 4)
         
-        # Model risk score simulation
-        # Risk score is probability of default, calculated based on credit score, DTI, income, employment years
-        # Simulates a logistic regression or XGBoost probability
-        logit = 2.5 - (cs - 600)/70.0 + (dti_ratio * 2.0) - (income / 100000.0)
+        # True probability of default in this simulated book (about 1 loan in 4 defaults, in line with a subprime
+        # lender), driven by credit score, payment history, utilization, DTI, income and job tenure. The outcome is
+        # then drawn from it, so the label is noisy the way real defaults are.
+        logit = (-2.6 - (cs - 600) / 60.0 + dti_ratio * 2.0 - income / 150000.0 - emp_years * 0.04
+                 + 0.55 * delinquencies + 2.5 * utilization)
         risk_score = float(1 / (1 + np.exp(-logit)))
         risk_score = round(max(0.001, min(risk_score, 0.999)), 4)
+        defaulted = int(np.random.random() < risk_score)
         
         # Decision status rules:
         # approved if risk score < 0.25 and DTI < 0.45 and credit score > 600
@@ -141,11 +154,12 @@ def generate_mock_data():
         app_date = datetime.now() - timedelta(days=days_ago)
         app_date_str = app_date.strftime("%Y-%m-%d %H:%M:%S")
         
-        loan_apps.append((cid, loan_amount, term, purpose, rate, dti_ratio, risk_score, status, app_date_str))
+        loan_apps.append((cid, loan_amount, term, purpose, rate, dti_ratio, risk_score, defaulted, status, app_date_str))
         
     cursor.executemany("""
-        INSERT INTO loan_applications (customer_id, loan_amount, term_months, loan_purpose, interest_rate, dti_ratio, risk_score, decision_status, applied_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO loan_applications (customer_id, loan_amount, term_months, loan_purpose, interest_rate, dti_ratio, risk_score,
+                                       defaulted, decision_status, applied_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, loan_apps)
     conn.commit()
     print(f"Inserted {len(loan_apps)} loan application records.")
@@ -153,7 +167,7 @@ def generate_mock_data():
     # 3. Generate Transactions & Anomaly Detection
     transactions = []
     
-    for cid, cs, income, debt in db_customers:
+    for cid, cs, income, debt, *_ in db_customers:
         # Generate 15-40 transactions per customer over the last 60 days
         num_tx = random.randint(15, 40)
         customer_avg_tx = random.uniform(20.0, 150.0)

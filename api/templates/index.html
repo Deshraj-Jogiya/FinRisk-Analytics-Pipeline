@@ -565,6 +565,17 @@
                                 </select>
                             </div>
                         </div>
+
+                        <div class="grid-2col">
+                            <div class="form-group">
+                                <label for="prior_delinquencies">Late Payments on Record (30+ days)</label>
+                                <input type="number" id="prior_delinquencies" name="prior_delinquencies" value="0" step="1" min="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="credit_utilization">Credit Utilization (%)</label>
+                                <input type="number" id="credit_utilization" name="credit_utilization" value="30" step="1" min="0" max="100" required>
+                            </div>
+                        </div>
                         
                         <button type="submit" class="btn-submit" id="btn-predict-submit">Run Real-time Inference</button>
                     </form>
@@ -828,7 +839,9 @@
                 loan_amount: parseFloat(form.loan_amount.value),
                 term_months: parseInt(form.term_months.value),
                 interest_rate: parseFloat(form.interest_rate.value),
-                loan_purpose: form.loan_purpose.value
+                loan_purpose: form.loan_purpose.value,
+                prior_delinquencies: parseInt(form.prior_delinquencies.value),
+                credit_utilization: parseFloat(form.credit_utilization.value) / 100
             };
             
             try {
@@ -852,11 +865,11 @@
                         <div class="fade-in">
                             <span class="badge ${badgeClass}">${decisionWord}</span>
                             <div class="result-title">Inference Results</div>
-                            <div class="result-prob">${(data.approval_probability * 100).toFixed(1)}%</div>
-                            <div class="text-secondary" style="font-size: 0.85rem; margin-bottom: 0.5rem;">Approval Probability</div>
+                            <div class="result-prob">${(data.default_risk_probability * 100).toFixed(1)}%</div>
+                            <div class="text-secondary" style="font-size: 0.85rem; margin-bottom: 0.5rem;">Predicted probability of default</div>
                             <div style="font-size: 0.8rem; color: var(--text-muted);">
-                                Calculated DTI: <span style="font-weight:600; color:white;">${(data.calculated_dti * 100).toFixed(1)}%</span> | 
-                                Default Risk: <span style="font-weight:600; color:white;">${(data.default_risk_probability * 100).toFixed(1)}%</span>
+                                Calculated DTI: <span style="font-weight:600; color:white;">${(data.calculated_dti * 100).toFixed(1)}%</span> |
+                                Declined at 80% or higher
                             </div>
                         </div>
                     `;
