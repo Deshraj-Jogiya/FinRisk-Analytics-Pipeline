@@ -48,7 +48,7 @@ pip install -r requirements.txt
 python etl/pipeline.py
 python models/train.py
 python -m uvicorn api.app:app --port 8000      # then open http://127.0.0.1:8000
-python -m pytest tests/test_graphql_schema.py -v
+python -m pytest tests/ -v
 ```
 
 ## Data
