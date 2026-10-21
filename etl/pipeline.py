@@ -182,6 +182,7 @@ def generate_mock_data():
             
             # Anomaly/Fraud simulation logic:
             is_fraud = 0
+            pattern = None
             anomaly_score = 0.05
             
             # High amount outliers
@@ -190,6 +191,7 @@ def generate_mock_data():
                 # Some are flagged as fraud
                 if anomaly_score > 0.85 and random.random() > 0.5:
                     is_fraud = 1
+                    pattern = "amount_spike"
                     
             # Out of town travel anomalies
             if category == "Travel" and random.random() > 0.90:
@@ -197,6 +199,7 @@ def generate_mock_data():
                 anomaly_score = max(anomaly_score, random.uniform(0.5, 0.85))
                 if random.random() > 0.7:
                     is_fraud = 1
+                    pattern = "foreign_location"
             
             # Add small random noise to anomaly score
             anomaly_score = round(max(0.01, min(anomaly_score + random.uniform(-0.05, 0.05), 0.99)), 4)
@@ -205,11 +208,26 @@ def generate_mock_data():
             tx_time = datetime.now() - timedelta(days=tx_days_ago)
             tx_time_str = tx_time.strftime("%Y-%m-%d %H:%M:%S")
             
-            transactions.append((cid, amount, category, location, tx_time_str, is_fraud, anomaly_score))
-            
+            transactions.append((cid, amount, category, location, tx_time_str, is_fraud, anomaly_score, pattern))
+
+    # Card-testing bursts: a stolen card is tried with several small charges a minute or so apart. Planted for about 1% of
+    # customers after the regular history, so the loan data and the regular transactions above are unchanged.
+    burst_rng = random.Random(7)
+    for cid, *_ in db_customers:
+        if burst_rng.random() >= 0.01:
+            continue
+        start = datetime.now() - timedelta(days=burst_rng.uniform(0.5, 59.0))
+        location = burst_rng.choice(locations)
+        tx_time = start
+        for _ in range(burst_rng.randint(6, 10)):
+            tx_time += timedelta(seconds=burst_rng.uniform(20, 90))
+            transactions.append((cid, round(burst_rng.uniform(1.0, 15.0), 2), burst_rng.choice(["Gadgets", "Retail"]), location,
+                                 tx_time.strftime("%Y-%m-%d %H:%M:%S"), 1, 0.05, "card_testing"))
+
     cursor.executemany("""
-        INSERT INTO transactions (customer_id, amount, merchant_category, location, transaction_time, is_fraud_flag, anomaly_score)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO transactions (customer_id, amount, merchant_category, location, transaction_time, is_fraud_flag, anomaly_score,
+                                  fraud_pattern)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, transactions)
     conn.commit()
     print(f"Inserted {len(transactions)} transaction records.")
@@ -219,3 +237,5 @@ def generate_mock_data():
 if __name__ == '__main__':
     initialize_database()
     generate_mock_data()
+    from fraud_rules import run_rules
+    run_rules(DB_PATH)

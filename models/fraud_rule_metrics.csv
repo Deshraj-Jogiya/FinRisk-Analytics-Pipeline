@@ -1,0 +1,5 @@
+rule,alerts,true_fraud_caught,precision,recall_all_fraud,recall_own_pattern
+velocity,1110,1110,1.0,0.4284,1.0
+amount_spike,4069,40,0.0098,0.0154,1.0
+foreign_location,4942,1464,0.2962,0.565,1.0
+any_rule,10057,2591,0.2576,1.0,
